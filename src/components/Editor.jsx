@@ -1,11 +1,60 @@
 // src/components/Editor.jsx
-import { useState, useRef, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
+import { useEditor, EditorContent } from '@tiptap/react';
+import StarterKit from '@tiptap/starter-kit';
+import ImageExtension from '@tiptap/extension-image';
+import UnderlineExtension from '@tiptap/extension-underline';
 import {
   Bold, Italic, Underline, Strikethrough,
   AlignLeft, AlignCenter, AlignRight,
-  ImageIcon, Columns, Rows, Square, Upload, Link as LinkIcon, X
+  ImageIcon, Columns, Rows, Square, Upload, Link as LinkIcon, X,
+  Heading1, Heading2, Heading3
 } from 'lucide-react';
 import '../css/Editor.css';
+
+// 💡 단일 Tiptap 에디터 창 컴포넌트
+function TiptapPane({ doc, isFocused, onFocus, onChangeContent, paneHeaderTitle }) {
+  const editor = useEditor({
+    extensions: [
+      StarterKit,
+      UnderlineExtension,
+      ImageExtension.configure({
+        inline: false,
+        allowBase64: true,
+      }),
+    ],
+    content: doc?.content || '',
+    onUpdate: ({ editor }) => {
+      if (doc) {
+        onChangeContent(doc.id, editor.getHTML());
+      }
+    },
+    onFocus: () => {
+      onFocus();
+    },
+  });
+
+  // 선택된 문서가 바뀔 때 에디터 내용 업데이트
+  useEffect(() => {
+    if (editor && doc && editor.getHTML() !== doc.content) {
+      editor.commands.setContent(doc.content || '');
+    }
+  }, [doc?.id, editor]);
+
+  return (
+    <div className={`pane ${isFocused ? 'focused' : ''}`} onClick={onFocus}>
+      {paneHeaderTitle && (
+        <div className="pane-header">
+          <span>{doc?.title || paneHeaderTitle}</span>
+          {isFocused && <span className="active-tag">편집 중</span>}
+        </div>
+      )}
+      <div className="editor-content-container">
+        <EditorContent editor={editor} className="tiptap-editor" />
+      </div>
+    </div>
+  );
+}
 
 export default function Editor({
   activeDoc,            // 현재 주 창의 문서 객체 ({ id, title, content })
@@ -134,6 +183,12 @@ export default function Editor({
       <div className="editor-toolbar">
         <div className="toolbar-row">
           <div className="toolbar-group">
+            <span className="tb-info-text">Tiptap 마크다운 에디터 모드</span>
+          </div>
+
+          <div className="tb-divider" />
+          
+          <div className="toolbar-group">
             <button type="button" className="tb-btn" onClick={() => executeCommand('bold')} title="굵게"><Bold size={15} /></button>
             <button type="button" className="tb-btn" onClick={() => executeCommand('italic')} title="기울임"><Italic size={15} /></button>
             <button type="button" className="tb-btn" onClick={() => executeCommand('underline')} title="밑줄"><Underline size={15} /></button>
@@ -160,79 +215,33 @@ export default function Editor({
 
           {/* 🔀 분할 버튼 */}
           <div className="toolbar-group split-controls">
-            <button
-              type="button"
-              className={`tb-btn ${splitMode === 'none' ? 'active' : ''}`}
-              onClick={() => { setSplitMode('none'); onSelectPane('primary'); }}
-              title="단일 뷰"
-            >
-              <Square size={15} />
-            </button>
-            <button
-              type="button"
-              className={`tb-btn ${splitMode === 'vertical' ? 'active' : ''}`}
-              onClick={() => setSplitMode('vertical')}
-              title="좌우 세로 분할"
-            >
-              <Columns size={15} /> <span>세로 분할</span>
-            </button>
-            <button
-              type="button"
-              className={`tb-btn ${splitMode === 'horizontal' ? 'active' : ''}`}
-              onClick={() => setSplitMode('horizontal')}
-              title="상하 가로 분할"
-            >
-              <Rows size={15} /> <span>가로 분할</span>
-            </button>
+            <button type="button" className={`tb-btn ${splitMode === 'none' ? 'active' : ''}`} onClick={() => { setSplitMode('none'); onSelectPane('primary'); }} title="단일 뷰"><Square size={15} /></button>
+            <button type="button" className={`tb-btn ${splitMode === 'vertical' ? 'active' : ''}`} onClick={() => setSplitMode('vertical')} title="좌우 세로 분할"><Columns size={15} /> <span>세로 분할</span></button>
+            <button type="button" className={`tb-btn ${splitMode === 'horizontal' ? 'active' : ''}`} onClick={() => setSplitMode('horizontal')} title="상하 가로 분할"><Rows size={15} /> <span>가로 분할</span></button>
           </div>
         </div>
       </div>
 
-      {/* ✍️ 2. 분할 화면 영역 */}
+      {/* ✍️ Tiptap 분할 에디터 영역 */}
       <div className={`editor-container split-${splitMode}`}>
         {/* 주 화면 (Primary Pane) */}
-        <div
-          className={`pane primary-pane ${activePane === 'primary' ? 'focused' : ''}`}
-          onClick={() => onSelectPane('primary')}
-        >
-          {splitMode !== 'none' && (
-            <div className="pane-header">
-              <span>{activeDoc.title || '문서 1'}</span>
-              {activePane === 'primary' && <span className="active-tag">편집 중</span>}
-            </div>
-          )}
-          <div
-            ref={primaryEditorRef}
-            className="editor-content"
-            contentEditable
-            suppressContentEditableWarning
-            onInput={(e) => onChangeContent(activeDoc.id, e.currentTarget.innerHTML)}
-            dangerouslySetInnerHTML={{ __html: activeDoc.content }}
-          />
-        </div>
+        <TiptapPane
+          doc={activeDoc}
+          isFocused={activePane === 'primary'}
+          onFocus={() => onSelectPane('primary')}
+          onChangeContent={onChangeContent}
+          paneHeaderTitle={splitMode !== 'none' ? '주 에디터' : null}
+        />
 
         {/* 보조 화면 (Secondary Pane) */}
         {splitMode !== 'none' && (
-          <div
-            className={`pane secondary-pane ${activePane === 'secondary' ? 'focused' : ''}`}
-            onClick={() => onSelectPane('secondary')}
-          >
-            <div className="pane-header">
-              <span>{secondaryDoc?.title || activeDoc.title}</span>
-              {activePane === 'secondary' && <span className="active-tag">편집 중</span>}
-            </div>
-            <div
-              ref={secondaryEditorRef}
-              className="editor-content"
-              contentEditable
-              suppressContentEditableWarning
-              onInput={(e) => {
-                const targetId = secondaryDoc ? secondaryDoc.id : activeDoc.id;
-                onChangeContent(targetId, e.currentTarget.innerHTML);
-              }}
-              dangerouslySetInnerHTML={{ __html: secondaryDoc ? secondaryDoc.content : activeDoc.content }}
-            />
-          </div>
+          <TiptapPane
+            doc={secondaryDoc || activeDoc}
+            isFocused={activePane === 'secondary'}
+            onFocus={() => onSelectPane('secondary')}
+            onChangeContent={onChangeContent}
+            paneHeaderTitle="보조 참조 창"
+          />
         )}
       </div>
 

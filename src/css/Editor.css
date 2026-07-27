@@ -396,3 +396,59 @@
   padding: 2px 6px;
   border-radius: 4px;
 }
+
+/* Tiptap 에디터 기본 컨테이너 */
+.editor-content-container {
+  padding: 20px;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+.tiptap-editor {
+  flex: 1;
+  outline: none;
+}
+
+/* Tiptap 핵심 엔진(ProseMirror) 내부 스타일 */
+.tiptap-editor .ProseMirror {
+  outline: none;
+  min-height: 300px;
+  font-size: 1rem;
+  line-height: 1.8;
+  color: #212529;
+}
+
+.tiptap-editor .ProseMirror p {
+  margin: 0 0 12px 0;
+}
+
+.tiptap-editor .ProseMirror p.is-editor-empty:first-child::before {
+  content: '내용을 입력하세요... (마크다운 #, **, > 지원)';
+  color: #adb5bd;
+  float: left;
+  height: 0;
+  pointer-events: none;
+}
+
+.tiptap-editor .ProseMirror img {
+  max-width: 100%;
+  height: auto;
+  border-radius: 6px;
+  margin: 16px 0;
+}
+
+.tiptap-editor .ProseMirror blockquote {
+  border-left: 4px solid #228be6;
+  padding-left: 12px;
+  margin-left: 0;
+  color: #495057;
+  font-style: italic;
+}
+
+.tb-info-text {
+  font-size: 0.8rem;
+  color: #228be6;
+  font-weight: 600;
+  padding: 0 4px;
+}

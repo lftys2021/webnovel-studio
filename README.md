@@ -36,23 +36,32 @@
 
 ## 📁 프로젝트 구조 (Directory Structure)
 
-```text
-src/
-├── components/
-│   ├── Sidebar.jsx           # 소설 카테고리 및 문서 트리 사이드바
-│   ├── Editor.jsx            # 분할 화면 지원 에디터 메인 컴포넌트
-│   ├── NovelFormModal.jsx    # 소설 추가/수정 모달
-│   └── CoverSelectModal.jsx  # 표지 이미지 선택 라이브러리 모달
-│   └── CoverManagerModal.jsx # 표지 라이브러리 관리 모달
-├── css/
-│   ├── App.css                <-- [분리] 대시보드 서재, 소설 카드, 레이아웃 기본 스타일
-│   ├── Sidebar.css            <-- [분리] 좌측 목차 트리가 들어가는 사이드바 스타일
-│   ├── Editor.css             <-- [유지] 메인 에디터, 툴바, 본문 삽화 전용 스타일
-│   ├── CoverManagerModal.css  <-- [분리] 표지/삽화 파일 업로드 & 모달 스타일
-│   └── NovelFormModal.css     <-- [분리] 새 소설 생성/수정 모달 전용 스타일
-├── data/
-│   └── covers.js             # 초기 표지 데이터 셋
-│   ├── tags.js               # 태그 목록
-│   └── genres.js             # 장르 목록
-├── App.jsx                   # 최상위 데이터 제어 및 뷰 상태 관리
-└── main.jsx                  # React 엔트리 포인트
+WEBNOVEL-STUDIO/
+├── node_modules/
+├── public/
+├── src/                          # ⚛️ 프론트엔드 (React)
+│   ├── components/
+│   │   ├── Sidebar.jsx           # 소설 카테고리 및 문서 트리 사이드바
+│   │   ├── Editor.jsx            # 분할 화면 지원 에디터 메인 컴포넌트
+│   │   ├── NovelFormModal.jsx    # 소설 추가/수정 모달
+│   │   └── CoverSelectModal.jsx  # 표지 이미지 선택 라이브러리 모달
+│   │   └── CoverManagerModal.jsx # 표지 라이브러리 관리 모달
+│   ├── css/
+│   │   ├── App.css                <-- [분리] 대시보드 서재, 소설 카드, 레이아웃 기본 스타일
+│   │   ├── Sidebar.css            <-- [분리] 좌측 목차 트리가 들어가는 사이드바 스타일
+│   │   ├── Editor.css             <-- [유지] 메인 에디터, 툴바, 본문 삽화 전용 스타일
+│   │   ├── CoverManagerModal.css  <-- [분리] 표지/삽화 파일 업로드 & 모달 스타일
+│   │   └── NovelFormModal.css     <-- [분리] 새 소설 생성/수정 모달 전용 스타일
+│   ├── data/
+│   │   └── covers.js             # 초기 표지 데이터 셋
+│   │   ├── tags.js               # 태그 목록
+│   │   └── genres.js             # 장르 목록
+│   ├── App.jsx                   # 최상위 데이터 제어 및 뷰 상태 관리
+│   └── main.jsx                  # React 엔트리 포인트
+├── server/                # 🐍 백엔드 (FastAPI) 👈 [추가!]
+│   ├── main.py            # 👈 여기에 위치!
+│   ├── requirements.txt   # (선택) 파이썬 패키지 목록
+│   └── venv/              # (선택) 파이썬 가상환경
+├── .gitignore
+├── package.json
+└── vite.config.js

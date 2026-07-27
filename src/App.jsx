@@ -1,5 +1,5 @@
 // src/App.jsx
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import './css/App.css';
 import Sidebar from './components/Sidebar';
 import Editor from './components/Editor';
@@ -7,6 +7,7 @@ import NovelFormModal from './components/NovelFormModal';
 import CoverManagerModal from './components/CoverManagerModal';
 import { Plus, Image as ImageIcon } from 'lucide-react';
 import { INITIAL_COVERS } from './data/covers';
+import * as novelApi from './api/novelApi';
 
 export default function App() {
   const [viewMode, setViewMode] = useState('dashboard');
@@ -21,6 +22,10 @@ export default function App() {
   const [isCoverManagerOpen, setIsCoverManagerOpen] = useState(false);
   const [editingNovel, setEditingNovel] = useState(null);
   const [covers, setCovers] = useState(INITIAL_COVERS);
+
+  // API
+  const [novels, setNovels] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
 
   // 표지 추가/삭제
   const handleAddCover = (newCover) => {
@@ -225,6 +230,60 @@ export default function App() {
 
   const activeDoc = findDocById(activeDocId);
   const secondaryDoc = findDocById(secondaryDocId);
+
+  // 1. 초기 데이터 연동 (FastAPI 서버 연결)
+  useEffect(() => {
+    const loadInitialData = async () => {
+      try {
+        setIsLoading(true);
+        const data = await novelApi.fetchNovels();
+        setNovels(data);
+      } catch (error) {
+        console.warn('백엔드 서버에 연결할 수 없어 목업 데이터를 사용합니다.');
+        // 서버 연결 실패 시 기본 테스트 데이터 적용 (Fallback)
+        setNovels([
+          {
+            id: 'novel-1',
+            title: '전생했더니, 세상이 망했다.',
+            genre: '현대판타지',
+            categories: [
+              {
+                id: 'cat-1',
+                title: '📜 세계관 설정',
+                children: [
+                  { id: 'doc-1', title: '마법 체계', content: '<p>이 세계관의 마법은 마나의 순환에 기반한다.</p>' },
+                ],
+              },
+            ],
+          },
+        ]);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    loadInitialData();
+  }, []);
+
+  // ✍️ 본문 업데이트 (백엔드 전송)
+  const handleUpdateContent = async (targetDocId, newContent) => {
+    // 1) 화면 UI 먼저 빠른 업데이트 (Optimistic UI)
+    updateCurrentCategories((prev) =>
+      prev.map((cat) => ({
+        ...cat,
+        children: cat.children.map((doc) =>
+          doc.id === targetDocId ? { ...doc, content: newContent } : doc
+        ),
+      }))
+    );
+
+    // 2) 백엔드 API 연동
+    try {
+      await novelApi.updateDocContent(targetDocId, newContent);
+    } catch (err) {
+      console.error('문서 저장 실패:', err);
+    }
+  };
 
   return (
     <>

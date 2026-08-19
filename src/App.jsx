@@ -1,262 +1,59 @@
 // src/App.jsx
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
+import novelApi from './api/novelApi';
+import logout from './api/authApi';
 import './css/App.css';
-import Sidebar from './components/Sidebar';
-import Editor from './components/Editor';
-import NovelFormModal from './components/NovelFormModal';
-import CoverManagerModal from './components/CoverManagerModal';
-import { Plus, Image as ImageIcon } from 'lucide-react';
-import { INITIAL_COVERS } from './data/covers';
-import * as novelApi from './api/novelApi';
 
 export default function App() {
-  const [viewMode, setViewMode] = useState('dashboard');
-  const [activeNovelId, setActiveNovelId] = useState('novel-1');
-  
-  // 🔀 분할 화면 관련 상태
-  const [activeDocId, setActiveDocId] = useState('doc-1');         // 주 창 문서 ID
-  const [secondaryDocId, setSecondaryDocId] = useState(null);      // 보조 창 문서 ID
-  const [activePane, setActivePane] = useState('primary');          // 선택된 창 ('primary' | 'secondary')
-
-  const [isNovelModalOpen, setIsNovelModalOpen] = useState(false);
-  const [isCoverManagerOpen, setIsCoverManagerOpen] = useState(false);
-  const [editingNovel, setEditingNovel] = useState(null);
-  const [covers, setCovers] = useState(INITIAL_COVERS);
-
-  // API
+  const navigate = useNavigate();
   const [novels, setNovels] = useState([]);
+  const [selectedNovel, setSelectedNovel] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
 
-  // 표지 추가/삭제
-  const handleAddCover = (newCover) => {
-    setCovers((prev) => [newCover, ...prev]);
-  };
-
-  const handleDeleteCover = (coverId) => {
-    setCovers((prev) => prev.filter((c) => c.id !== coverId));
-  };
-
-  const [novels, setNovels] = useState([
+  // 초기 목업 데이터 (안전한 기본 데이터 구조)
+  const defaultMockNovels = [
     {
       id: 'novel-1',
-      title: '전생했더니, 세상이 망했다.',
+      title: '전생했더니, 세상이 망했다',
       genre: '현대판타지',
-      schedule: '주 5회 (월~금)',
-      charCountType: '공백 포함',
-      targetCharCount: '5000',
-      description: '눈을 떠보니 멸망한 세계. 아티팩트 해독 능력 하나로 살아남아야 한다!',
-      tags: ['퓨전판타지', '아포칼립스', '전생'],
-      coverImage: 'https://picsum.photos/seed/novel1/300/400',
+      synopsis: '어느 날 눈을 떠보니 망해버린 소설 속 세상이었다.',
       categories: [
         {
           id: 'cat-1',
           title: '📜 세계관 설정',
-          isOpen: true,
           children: [
-            { id: 'doc-1', title: '마법 체계', content: '<p>이 세계관의 마법은 마나의 순환에 기반한다.</p>' },
-            { id: 'doc-2', title: '속성', content: '<p>4대 속성은 불, 물, 바람, 땅이다.</p>' },
-          ],
+            { id: 'doc-1', title: '마법 체계', content: '<p>이 세계관의 마법은 마나 순환에 기반한다.</p>' },
+            { id: 'doc-2', title: '세력 구도', content: '<p>3대 가문과 황실의 대립 구조.</p>' }
+          ]
         },
-      ],
-    },
-  ]);
-
-  // 현재 활성화된 소설 찾기
-  const currentNovel = novels.find((n) => n.id === activeNovelId) || novels[0];
-
-  // 🔍 중첩된 카테고리 구조에서 특정 ID의 문서를 찾아오는 헬퍼 함수
-  const findDocById = (docId) => {
-    if (!currentNovel || !docId) return null;
-    for (const cat of currentNovel.categories) {
-      const found = cat.children.find((doc) => doc.id === docId);
-      if (found) return found;
-    }
-    return null;
-  };
-
-  /* --- 핸들러 함수들 --- */
-  const handleOpenAddModal = () => {
-    setEditingNovel(null);
-    setIsNovelModalOpen(true);
-  };
-
-  const handleOpenEditModal = (novel, e) => {
-    e.stopPropagation();
-    setEditingNovel(novel);
-    setIsNovelModalOpen(true);
-  };
-
-  const handleSaveNovel = (formData) => {
-    if (editingNovel) {
-      setNovels((prev) =>
-        prev.map((n) => (n.id === editingNovel.id ? { ...n, ...formData } : n))
-      );
-    } else {
-      const newNovelId = `novel-${Date.now()}`;
-      const newDocId = `doc-${Date.now()}`;
-      const newNovel = {
-        ...formData,
-        id: newNovelId,
-        categories: [
-          {
-            id: `cat-${Date.now()}`,
-            title: '📜 세계관 설정',
-            isOpen: true,
-            children: [{ id: newDocId, title: '개요', content: `<p>내용을 입력하세요.</p>` }],
-          },
-        ],
-      };
-      setNovels([...novels, newNovel]);
-    }
-  };
-
-  // 👈 사이드바에서 문서 선택 시 (선택된 창에 맞게 적용)
-  const handleSelectDocFromSidebar = (docId) => {
-    if (activePane === 'secondary') {
-      setSecondaryDocId(docId);
-    } else {
-      setActiveDocId(docId);
-    }
-  };
-
-  const handleOpenNovel = (novelId) => {
-    setActiveNovelId(novelId);
-    const target = novels.find((n) => n.id === novelId);
-    const firstDoc = target?.categories[0]?.children[0]?.id || null;
-    setActiveDocId(firstDoc);
-    setSecondaryDocId(null);
-    setViewMode('editor');
-  };
-
-  /* --- 카테고리/문서 편집 핸들러 --- */
-  const updateCurrentCategories = (updater) => {
-    setNovels((prev) =>
-      prev.map((n) => {
-        if (n.id === activeNovelId) {
-          return { ...n, categories: typeof updater === 'function' ? updater(n.categories) : updater };
+        {
+          id: 'cat-2',
+          title: '👤 등장인물',
+          children: [
+            { id: 'doc-3', title: '주인공 (강태현)', content: '<p>24세, 전생자이자 특이능력 소유자.</p>' }
+          ]
         }
-        return n;
-      })
-    );
-  };
+      ]
+    }
+  ];
 
-  const handleToggleCategory = (catId) => {
-    updateCurrentCategories((prev) =>
-      prev.map((cat) => (cat.id === catId ? { ...cat, isOpen: !cat.isOpen } : cat))
-    );
-  };
-
-  const handleAddCategory = () => {
-    const title = prompt('새 카테고리 이름을 입력하세요:', '📁 새 카테고리');
-    if (!title) return;
-    updateCurrentCategories((prev) => [...prev, { id: `cat-${Date.now()}`, title, isOpen: true, children: [] }]);
-  };
-
-  const handleEditCategory = (catId, currentTitle, e) => {
-    e.stopPropagation();
-    const newTitle = prompt('카테고리 이름을 수정하세요:', currentTitle);
-    if (!newTitle) return;
-    updateCurrentCategories((prev) =>
-      prev.map((cat) => (cat.id === catId ? { ...cat, title: newTitle } : cat))
-    );
-  };
-
-  const handleDeleteCategory = (catId, e) => {
-    e.stopPropagation();
-    if (!confirm('이 카테고리와 내부 문서가 모두 삭제됩니다.')) return;
-    updateCurrentCategories((prev) => prev.filter((cat) => cat.id !== catId));
-  };
-
-  const handleAddDocument = (catId, e) => {
-    e.stopPropagation();
-    const title = prompt('새 문서 제목을 입력하세요:', '새 문서');
-    if (!title) return;
-
-    const newDocId = `doc-${Date.now()}`;
-    const newDoc = { id: newDocId, title, content: `<p>내용을 입력하세요.</p>` };
-
-    updateCurrentCategories((prev) =>
-      prev.map((cat) =>
-        cat.id === catId ? { ...cat, isOpen: true, children: [...cat.children, newDoc] } : cat
-      )
-    );
-    
-    handleSelectDocFromSidebar(newDocId);
-  };
-
-  const handleEditDocument = (docId, currentTitle, e) => {
-    e.stopPropagation();
-    const newTitle = prompt('문서 제목을 수정하세요:', currentTitle);
-    if (!newTitle) return;
-
-    handleUpdateTitle(docId, newTitle);
-  };
-
-  const handleDeleteDocument = (docId, e) => {
-    e.stopPropagation();
-    if (!confirm('정말 삭제하시겠습니까?')) return;
-
-    updateCurrentCategories((prev) =>
-      prev.map((cat) => ({
-        ...cat,
-        children: cat.children.filter((doc) => doc.id !== docId),
-      }))
-    );
-  };
-
-  // ✍️ 에디터 내용 업데이트
-  const handleUpdateContent = (targetDocId, newContent) => {
-    updateCurrentCategories((prev) =>
-      prev.map((cat) => ({
-        ...cat,
-        children: cat.children.map((doc) =>
-          doc.id === targetDocId ? { ...doc, content: newContent } : doc
-        ),
-      }))
-    );
-  };
-
-  // 📌 머릿글/문서 제목 업데이트
-  const handleUpdateTitle = (targetDocId, newTitle) => {
-    updateCurrentCategories((prev) =>
-      prev.map((cat) => ({
-        ...cat,
-        children: cat.children.map((doc) =>
-          doc.id === targetDocId ? { ...doc, title: newTitle } : doc
-        ),
-      }))
-    );
-  };
-
-  const activeDoc = findDocById(activeDocId);
-  const secondaryDoc = findDocById(secondaryDocId);
-
-  // 1. 초기 데이터 연동 (FastAPI 서버 연결)
   useEffect(() => {
     const loadInitialData = async () => {
       try {
         setIsLoading(true);
         const data = await novelApi.fetchNovels();
-        setNovels(data);
+        if (data && Array.isArray(data) && data.length > 0) {
+          setNovels(data);
+          setSelectedNovel(data[0]);
+        } else {
+          setNovels(defaultMockNovels);
+          setSelectedNovel(defaultMockNovels[0]);
+        }
       } catch (error) {
-        console.warn('백엔드 서버에 연결할 수 없어 목업 데이터를 사용합니다.');
-        // 서버 연결 실패 시 기본 테스트 데이터 적용 (Fallback)
-        setNovels([
-          {
-            id: 'novel-1',
-            title: '전생했더니, 세상이 망했다.',
-            genre: '현대판타지',
-            categories: [
-              {
-                id: 'cat-1',
-                title: '📜 세계관 설정',
-                children: [
-                  { id: 'doc-1', title: '마법 체계', content: '<p>이 세계관의 마법은 마나의 순환에 기반한다.</p>' },
-                ],
-              },
-            ],
-          },
-        ]);
+        console.warn('백엔드 /api/novels 연결 실패: 목업 데이터를 사용합니다.');
+        setNovels(defaultMockNovels);
+        setSelectedNovel(defaultMockNovels[0]);
       } finally {
         setIsLoading(false);
       }
@@ -265,128 +62,100 @@ export default function App() {
     loadInitialData();
   }, []);
 
-  // ✍️ 본문 업데이트 (백엔드 전송)
-  const handleUpdateContent = async (targetDocId, newContent) => {
-    // 1) 화면 UI 먼저 빠른 업데이트 (Optimistic UI)
-    updateCurrentCategories((prev) =>
-      prev.map((cat) => ({
-        ...cat,
-        children: cat.children.map((doc) =>
-          doc.id === targetDocId ? { ...doc, content: newContent } : doc
-        ),
-      }))
-    );
-
-    // 2) 백엔드 API 연동
-    try {
-      await novelApi.updateDocContent(targetDocId, newContent);
-    } catch (err) {
-      console.error('문서 저장 실패:', err);
-    }
+  const handleLogout = () => {
+    logout();
+    navigate('/login');
   };
 
+  if (isLoading) {
+    return <div style={{ padding: '20px', textAlign: 'center' }}>데이터를 불러오는 중입니다...</div>;
+  }
+
   return (
-    <>
-      {/* 🟢 1. 서재 대시보드 화면 */}
-      {viewMode === 'dashboard' && (
-        <div className="dashboard-container">
-          <header className="dashboard-header">
-            <h1>📚 내 웹소설 서재</h1>
-            <div className="header-buttons">
-              <button className="btn-secondary" onClick={() => setIsCoverManagerOpen(true)}>
-                <ImageIcon size={18} /> 표지 라이브러리
-              </button>
-              <button className="btn-primary" onClick={handleOpenAddModal}>
-                <Plus size={18} /> 새 소설 만들기
-              </button>
-            </div>
-          </header>
-
-          <div className="novel-grid">
-            {novels.map((novel) => (
-              <div key={novel.id} className="novel-card" onClick={() => handleOpenNovel(novel.id)}>
-                <div className="card-cover">
-                  <img src={novel.coverImage} alt={novel.title} />
-                </div>
-                <div className="card-content">
-                  <div className="card-header-row">
-                    <span className="genre-badge">{novel.genre}</span>
-                    <button className="btn-edit-text" onClick={(e) => handleOpenEditModal(novel, e)}>수정</button>
-                  </div>
-                  <h3 className="card-title">{novel.title}</h3>
-                  <p className="card-desc">{novel.description}</p>
-                  <div className="card-info-meta">
-                    <span>⏱️ {novel.schedule}</span>
-                    <span>📝 목표 {novel.targetCharCount}자 ({novel.charCountType === '공백 포함' ? '공포' : '공미포'})</span>
-                  </div>
-                  <div className="card-tags">
-                    {novel.tags.map((tag, idx) => (
-                      <span key={idx} className="tag-chip">#{tag}</span>
-                    ))}
-                  </div>
-                </div>
-              </div>
+    <div className="app-container" style={{ display: 'flex', height: '100vh', fontFamily: 'sans-serif' }}>
+      {/* 1. 좌측 사이드바: 소설 목록 및 마이페이지 버튼 */}
+      <aside style={{ width: '250px', background: '#2b2d42', color: '#fff', padding: '16px', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
+        <div>
+          <h2 style={{ fontSize: '1.2rem', marginBottom: '20px', borderBottom: '1px solid #4a4e69', paddingBottom: '10px' }}>
+            📚 내 작품 목록
+          </h2>
+          <ul style={{ listStyle: 'none', padding: 0 }}>
+            {(novels || []).map((novel) => (
+              <li
+                key={novel.id}
+                onClick={() => setSelectedNovel(novel)}
+                style={{
+                  padding: '10px',
+                  borderRadius: '6px',
+                  cursor: 'pointer',
+                  backgroundColor: selectedNovel?.id === novel.id ? '#4a4e69' : 'transparent',
+                  marginBottom: '8px'
+                }}
+              >
+                <strong>{novel.title}</strong>
+                <div style={{ fontSize: '0.8rem', color: '#8d99ae' }}>{novel.genre}</div>
+              </li>
             ))}
+          </ul>
+        </div>
+
+        <div>
+          <button
+            onClick={() => navigate('/profile')}
+            style={{ width: '100%', padding: '10px', marginBottom: '8px', backgroundColor: '#4a5568', color: '#fff', border: 'none', borderRadius: '4px', cursor: 'pointer' }}
+          >
+            👤 마이페이지
+          </button>
+          <button
+            onClick={handleLogout}
+            style={{ width: '100%', padding: '10px', backgroundColor: '#e63946', color: '#fff', border: 'none', borderRadius: '4px', cursor: 'pointer' }}
+          >
+            로그아웃
+          </button>
+        </div>
+      </aside>
+
+      {/* 2. 중앙 메인 에디터 및 설정 영역 */}
+      <main style={{ flex: 1, padding: '24px', overflowY: 'auto', backgroundColor: '#f8f9fa' }}>
+        {selectedNovel ? (
+          <div>
+            <header style={{ marginBottom: '20px', borderBottom: '2px solid #dee2e6', paddingBottom: '12px' }}>
+              <h1 style={{ margin: 0, fontSize: '1.8rem', color: '#212529' }}>{selectedNovel.title}</h1>
+              <p style={{ color: '#6c757d', margin: '4px 0 0 0' }}>장르: {selectedNovel.genre}</p>
+            </header>
+
+            <section style={{ marginBottom: '24px' }}>
+              <h3>📖 시놉시스</h3>
+              <p style={{ background: '#fff', padding: '12px', borderRadius: '6px', border: '1px solid #e9ecef' }}>
+                {selectedNovel.synopsis || '등록된 시놉시스가 없습니다.'}
+              </p>
+            </section>
+
+            {/* 안전하게 ?. 옵셔널 체이닝으로 설정 카테고리 랜더링 */}
+            <section>
+              <h3>📁 설정 및 문서</h3>
+              {(selectedNovel.categories || []).map((cat) => (
+                <div key={cat.id} style={{ marginBottom: '16px', background: '#fff', padding: '16px', borderRadius: '8px', border: '1px solid #e9ecef' }}>
+                  <h4 style={{ margin: '0 0 12px 0', color: '#495057' }}>{cat.title}</h4>
+                  <ul style={{ listStyle: 'none', paddingLeft: '12px', margin: 0 }}>
+                    {(cat.children || []).map((doc) => (
+                      <li key={doc.id} style={{ padding: '6px 0', borderBottom: '1px solid #f1f3f5' }}>
+                        📄 <strong>{doc.title}</strong>
+                        <div
+                          style={{ fontSize: '0.9rem', color: '#495057', marginTop: '4px' }}
+                          dangerouslySetInnerHTML={{ __html: doc.content }}
+                        />
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              ))}
+            </section>
           </div>
-        </div>
-      )}
-
-      {/* 🔵 2. 집필 에디터 화면 */}
-      {viewMode === 'editor' && (
-        <div className="studio-layout">
-          <Sidebar
-            currentNovel={currentNovel}
-            onBackToDashboard={() => setViewMode('dashboard')}
-            categories={currentNovel?.categories || []}
-            activeDocId={activePane === 'secondary' && secondaryDocId ? secondaryDocId : activeDocId}
-            onSelectDoc={handleSelectDocFromSidebar}
-            onToggleCategory={handleToggleCategory}
-            onAddCategory={handleAddCategory}
-            onEditCategory={handleEditCategory}
-            onDeleteCategory={handleDeleteCategory}
-            onAddDocument={handleAddDocument}
-            onEditDocument={handleEditDocument}
-            onDeleteDocument={handleDeleteDocument}
-          />
-
-          <main className="main-content">
-            {activeDoc ? (
-              <Editor
-                activeDoc={activeDoc}
-                secondaryDoc={secondaryDoc}
-                activePane={activePane}
-                onSelectPane={(pane) => setActivePane(pane)}
-                onChangeContent={handleUpdateContent}
-                onChangeTitle={handleUpdateTitle}
-              />
-            ) : (
-              <div className="no-doc-selected">
-                <p>👈 좌측 메뉴에서 문서를 선택하거나 새 문서를 만드세요.</p>
-              </div>
-            )}
-          </main>
-        </div>
-      )}
-
-      {/* 🟣 소설 등록/수정 모달 */}
-      <NovelFormModal
-        isOpen={isNovelModalOpen}
-        onClose={() => setIsNovelModalOpen(false)}
-        onSubmit={handleSaveNovel}
-        initialData={editingNovel}
-        covers={covers}
-        onAddCover={handleAddCover}
-        onDeleteCover={handleDeleteCover}
-      />
-
-      {/* 🎨 대시보드 전용 표지 라이브러리 모달 */}
-      <CoverManagerModal
-        isOpen={isCoverManagerOpen}
-        onClose={() => setIsCoverManagerOpen(false)}
-        covers={covers}
-        onAddCover={handleAddCover}
-        onDeleteCover={handleDeleteCover}
-      />
-    </>
+        ) : (
+          <div>선택된 소설이 없습니다.</div>
+        )}
+      </main>
+    </div>
   );
 }

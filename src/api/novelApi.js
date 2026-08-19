@@ -11,6 +11,13 @@ const api = axios.create({
   },
 });
 
+export const novelApi = {
+  fetchNovels: async () => {
+    const res = await axios.get(`${API_BASE_URL}/novels`);
+    return res.data;
+  },
+};
+
 /* --- 소설(Novel) 관련 API --- */
 export const fetchNovels = async () => {
   const response = await api.get('/novels');
@@ -47,3 +54,5 @@ export const createDocument = async (categoryId, title) => {
   const response = await api.post(`/categories/${categoryId}/documents`, { title });
   return response.data;
 };
+
+export default novelApi;

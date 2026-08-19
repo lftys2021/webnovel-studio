@@ -65,3 +65,44 @@ WEBNOVEL-STUDIO/
 ├── .gitignore
 ├── package.json
 └── vite.config.js
+
+## python 관련 설치 명령어
+pip install fastapi uvicorn 
+pip install sqlalchemy 
+pip install passlib "bcrypt==4.0.1" 
+pip install python-jose 
+npm install react-router-dom
+
+# 1. 현 폴더를 Git 저장소로 초기화
+git init
+
+# 2. 업로드할 파일들을 대기열(Staging Area)에 추가
+git add .
+
+# 3. 변경 사항 저장 메시지(커밋) 작성
+git commit -m "Day5"
+
+# 4. 기본 브랜치 이름을 main으로 변경
+git branch -M main
+
+# 5. 내 GitHub 원격 저장소와 연결 (복사한 주소 붙여넣기)
+git remote add origin https://github.com/lftys2021/webnovel-studio.git
+
+# 6. GitHub로 업로드
+git push -u origin main
+
+
+# 1. GitHub에서 프로젝트 전체 내려받기
+git clone https://github.com/lftys2021/webnovel-studio.git
+
+# 6. GitHub로 다운로드
+git pull origin main
+
+# 2. 내려받은 프로젝트 폴더로 이동
+cd javascript
+
+# 3. node_modules 패키지들 일괄 설치 (깃허브에는 node_modules가 안 올라가므로 필수!)
+npm install
+
+# 4. 실행 테스트
+npm run dev

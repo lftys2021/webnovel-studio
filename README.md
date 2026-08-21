@@ -66,12 +66,17 @@ WEBNOVEL-STUDIO/
 ├── package.json
 └── vite.config.js
 
-## python 관련 설치 명령어
+## react + python 관련 설치 명령어
 pip install fastapi uvicorn 
 pip install sqlalchemy 
 pip install passlib "bcrypt==4.0.1" 
 pip install python-jose 
 npm install react-router-dom
+npm install @tiptap/react @tiptap/pm @tiptap/starter-kit @tiptap/extension-placeholder @tiptap/extension-text-align --legacy-peer-deps
+
+## 실행 명령어
+python -m uvicorn main:app --reload --port 8000
+npm run dev
 
 # 1. 현 폴더를 Git 저장소로 초기화
 git init
